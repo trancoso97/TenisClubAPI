@@ -10,20 +10,33 @@ router.post('/', async (req, res) => {
         //pega os valores para calcular a duração
         var inicioEmHour = body.inicioEm.substring(11, 13);
         var fimEmHour = body.fimEm.substring(11, 13);
+        if (inicioEmHour < 08 || fimEmHour > 20) {
+            throw new FuncionamentoException("Horário inválido!");
+        }
 
         //calcula os valores de duração e valor
         body.duracao = (fimEmHour - inicioEmHour) * 60;
         body.valor = body.duracao * 0.50;
 
+        //validação de horario de funcionamento
+        var inicioEmDay = body.inicioEm.substring(1, 10);
+        var fimEmDay = body.fimEm.substring(1, 10);
+        if (inicioEmDay != fimEmDay) {
+            throw new FuncionamentoException("Horário inválido!");
+        }
+
+
         //verificar disponibilidade
-        const r = await Reservas.findOne({ inicioEm: body.inicioEm });
+        const r = await Reservas.find({ body });
         if (r) {
-            return res.status(422).send({
-                error: {
-                    message: 'O horário solicitado não está disponível, favor selecione um outro horário.',
-                    code: 'HORARIO_INDISPONIVEL'
-                }
-            })
+            if (r.tipo = req.body.tipo) {
+                return res.status(422).send({
+                    error: {
+                        message: 'O horário solicitado não está disponível, favor selecione um outro horário.',
+                        code: 'HORARIO_INDISPONIVEL'
+                    }
+                })
+            }
         } else {
 
             const reserva = await Reservas.create(body);
@@ -31,7 +44,15 @@ router.post('/', async (req, res) => {
             return res.send({ reserva });
         }
     } catch (e) {
-        res.send(400);
+        if (e instanceof FuncionamentoException) {
+            res.status(400).send({
+                error: {
+                    message: 'Horário de funcionamento de 08h às 20h'
+                }
+            })
+        } else {
+            res.status(400).send();
+        }
     }
 });
 
@@ -46,14 +67,21 @@ router.get('/:id', async (req, res) => {
         const ReservaId = req.params.id;
 
         const reserva = await Reservas.findById(ReservaId);
-
-        return res.send(reserva);
+        if (reserva) {
+            return res.send(reserva);
+        } else {
+            throw new ReservaInexistenteException("Id inválido!");
+        }
     } catch (e) {
-        res.status(400).send({
-            error: {
-                message: 'Id inválido!'
-            }
-        })
+        if (e instanceof ReservaInexistenteException) {
+            res.status(400).send({
+                error: {
+                    message: 'Id inválido!'
+                }
+            })
+        } else {
+            res.status(400).send();
+        }
     }
 })
 
@@ -64,13 +92,16 @@ router.put('/:id', async (req, res) => {
 
         //validar tipo
         var tipo = body.tipo;
-        if(tipo != 'hard' && tipo != 'saibro'){
+        if (tipo != 'hard' && tipo != 'saibro') {
             throw new TipoException("Tipo de quadra inválido");
         }
 
         //pega os valores para calcular a duração
         var inicioEmHour = body.inicioEm.substring(11, 13);
         var fimEmHour = body.fimEm.substring(11, 13);
+        if (inicioEmHour < 08 || fimEmHour > 20) {
+            throw new FuncionamentoException("Horário inválido!");
+        }
 
         //validação de duração
         var inicioEmMin = body.inicioEm.substring(14, 16);
@@ -79,13 +110,22 @@ router.put('/:id', async (req, res) => {
             throw new DuracaoException("Duração inválida!");
         }
 
+        //validação de horario de funcionamento
+        var inicioEmDay = body.inicioEm.substring(1, 10);
+        var fimEmDay = body.fimEm.substring(1, 10);
+        if (inicioEmDay != fimEmDay) {
+            throw new FuncionamentoException("Horário inválido!");
+        }
+
         //calcula os valores de duração e valor
         body.duracao = (fimEmHour - inicioEmHour) * 60;
         body.valor = body.duracao * 0.50;
 
         //validação do valor status
-        if (body.status != 'ativa' || body.status != 'cancelada' || body.status != 'paga') {
-            throw new StatusException("Status inválido!");
+        if (body.status) {
+            if (body.status != 'ativa' || body.status != 'cancelada' || body.status != 'paga') {
+                throw new StatusException("Status inválido!");
+            }
         }
 
         //verificar disponibilidade
@@ -104,9 +144,15 @@ router.put('/:id', async (req, res) => {
         }
     } catch (e) {
         if (e instanceof DuracaoException) {
-            return res.status(422);
+            return res.status(422).send();
         } else if (e instanceof StatusException) {
-            return res.status(400);
+            return res.status(400).send();
+        } else if (e instanceof FuncionamentoException) {
+            res.status(400).send({
+                error: {
+                    message: 'Horário de funcionamento de 08h às 20h'
+                }
+            })
         } else {
             return res.status(400).send({
                 error: {
@@ -139,6 +185,16 @@ function StatusException(message) {
 function TipoException(message) {
     this.message = message;
     this.name = "TipoException";
+}
+
+function FuncionamentoException(message) {
+    this.message = message;
+    this.name = "FuncionamentoException";
+}
+
+function ReservaInexistenteException(message) {
+    this.message = message;
+    this.name = "ReservaInexistenteException";
 }
 
 module.exports = router;
