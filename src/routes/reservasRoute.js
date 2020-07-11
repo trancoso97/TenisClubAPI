@@ -27,7 +27,7 @@ router.post('/', async (req, res) => {
 
 
         //verificar disponibilidade
-        const r = await Reservas.find({ body });
+        const r = await Reservas.findOne({ inicioEm: body.inicioEm });
         if (r) {
             if (r.tipo = req.body.tipo) {
                 return res.status(422).send({
