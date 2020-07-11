@@ -13,4 +13,4 @@ Para utilizar a API, basta seguir os passos:
 
 5º: Ainda no Shell, executar o comando 'node server.js'.
 
-Agora a API está funcionando em http:localhost:3000.
+Agora a API está funcionando em http://localhost:3000.
